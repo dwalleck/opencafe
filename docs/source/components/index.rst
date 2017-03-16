@@ -1,9 +1,9 @@
 ======================
-OpenCAFE Architecture
+Components of OpenCafe
 ======================
 
 .. toctree::
 
-   model
-   client
-   behavior
+   logger
+   env_manager
+   config
