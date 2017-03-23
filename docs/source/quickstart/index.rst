@@ -2,6 +2,10 @@
 Quick Start
 ===========
 
+**The goal of this portion of the guide is to be a very deliberate step-by-step
+explanation of not only how to use OpenCafe components, but to also explain
+what types of problems are solved by using OpenCafe.**
+
 To get started, let's install and initialize OpenCafe. We can do this by
 running the following commands:
 
@@ -261,20 +265,68 @@ The GitHub API is expansive, so we could go on for some time defining more
 requests. Rather than defining these in-line, defining these functions in a
 common class or module would make more sense.
 
-Next, let's add some assertions to our script:
+.. code:: python
 
-<code with assertions>
+    import json
+    import logging
+    import os
+    import sys
 
-Python's `json` library does a good job of tranforming JSON text into
-dictionaries. Accessing the response as a dictionary isn't too difficult
-when a response body has one or two properties, but let's jump back to the
-first response output we looked at. It has dozens of properties, including
-ones that are nested. Using the response as-is requires memorizing the
-response structure or constantly referencing documentation as you code. If you
-make a mistake, you may not find that out until you run the script. If the
-name of one of the properties changes, this means tediously changing the property
-each place it is used or trying to do a string replace across the project,
-which can have unitended consequences unless you're very careful.
+    from cafe.engine.clients.base import BaseClient
+    from cafe.engine.http.client import BaseHTTPClient
+    from cafe.common.reporting import cclogging
+
+    class GitHubClient(BaseClient):
+
+        def __init__(self, base_url):
+            self.base_url = base_url
+            self.client = BaseHTTPClient()
+        
+        def get_project_commits(self, org_name, project_name):
+            return self.client.get(
+                '{base_url}/repos/{org}/{project}/commits?per_page=1'.format(
+                    base_url=self.base_url, org=organization, project=project))
+        
+        def get_project_issues(self, org_name, project_name):
+            return self.client.get(
+                '{base_url}/repos/{org}/{project}/commits?per_page=1'.format(
+                    base_url=self.base_url, org=organization, project=project))
+        
+        def get_project_forks(self, org_name, project_name):
+            return self.client.get(
+                '{base_url}/repos/{org}/{project}/commits?per_page=1'.format(
+                    base_url=self.base_url, org=organization, project=project))
+    
+    os.environ['CAFE_ENGINE_CONFIG_FILE_PATH']='.'
+    cclogging.init_root_log_handler()
+    root_log = logging.getLogger()
+    root_log.addHandler(logging.StreamHandler(stream=sys.stderr))
+    root_log.setLevel(logging.DEBUG)
+
+    base_url = 'https://api.github.com'
+    organization = 'cafehub'
+    project = 'opencafe'
+    client = GitHubClient(base_url)
+    
+    resp1 = client.get_project_commits(org_name=organization, project_name=project)
+    resp2 = client.get_project_issues(org_name=organization, project_name=project)
+    resp3 = client.get_project_forks(org_name=organization, project_name=project) 
+
+Now that our HTTP requests are in better shape, let's talk about dealing with
+the responses. The response object has a `json` method that will transform the
+body of the response into a Python dictionary. While this is very useful for
+quick scripts and possibly for very stable APIs, it becomes a more challenging
+approach when dealing with large APIs or APIs that are in development.
+
+Accessing the response as a dictionary isn't too difficult when a response body
+has one or two properties, but let's jump back to the first response output we
+looked at. It has dozens of properties, including ones that are nested. Using
+the response as-is requires memorizing the response structure or constantly
+referencing API documentation as you code. If you make a mistake, you may not find
+that out until you run the script. Also, if/when the name of one of the properties
+or the structure of the API response changes, this means tediously changing the property each place it is used or
+trying to do a string replace across the project, which can have unitended
+consequences unless you're very careful.
 
 An alternate approach is to deserialize the JSON response to an object. This
 greatly simplifies refactoring of response properties and has the added bonus
@@ -292,3 +344,5 @@ explicitly defined, static analysis tools will be able to assist us going
 forward. 
 
 <show the not as good shortcut?>
+
+<section on why clients should not make any assumptions on how they will be used>
