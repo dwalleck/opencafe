@@ -19,21 +19,13 @@ born.
 OpenCafe was designed to be the foundation for building automated test suites.
 We do provide some guidance/good practices for developing clients for
 interfacing with the application under test, it does not (enforce patterns)/(introduce any contstraints)
-for how the tests themselves are designed/developed.  
+for how the tests themselves are designed/developed.
 
-old
----
-The Common Automation Framework Engine (CAFE) is the core engine/driver used
-to build an automated testing framework. It is designed to be used as the base
-engine for building an automated framework for API and non-UI resource
-testing. It is designed to support functional, integration and reliability
-testing. The engine is NOT designed to support performance or load testing.
-
-CAFE core provides models, patterns, and supported libraries for building
-automated tests. It provides its own lightweight unittest based runner,
-however, it is designed to be modular. It can be extended to support most
-test case front ends/runners (nose, pytest, lettuce, testr, etc...) through
-driver plug-ins.
+Though OpenCafe does provide its own test runner, the OpenCafe components
+can be used with most Python test runners including pytest, nose, behave,
+testr, and many others. Inversely, the OpenCafe components and conventions
+can also be used as a plugin to other test runners (pytest plugin support
+is in an alpha state).
 
 .. note::
 
@@ -45,6 +37,17 @@ Relevant Links
 * GitHub: `Repository`_
 * CI: `CI`_
 * Coverage: *Coming soon*
+
+Principles
+==========
+
+- All test infrastructure should be treated like code. It *is* code and not
+  throwaway scripts. Treating tests like scripts can result in brittle tests
+  that are costly to maintain.
+- Test failures should be easy to triage
+- Test logs should be an audit trail of everything that happened during a test run
+- It should be easy to switch between the test data/environment being used
+  for testing. It should be simple to do this at execution time
 
 
 Contents
