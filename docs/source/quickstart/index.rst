@@ -16,7 +16,7 @@ running the following commands:
 
 As an example, lets write a few tests for the GitHub API. Let's assume that we
 don't have language bindings or SDKs for our API. We can create a simple
-client using the <fill in> class provided by the OpenCafe http plugin, which
+client using the BaseHTTPClient class provided by the OpenCafe HTTP plugin, which
 is a lightweight wrapper for the `requests` package. First, we'll need to
 install the http plugin:
 
@@ -314,9 +314,9 @@ common class or module would make more sense.
 
 Now that our HTTP requests are in better shape, let's talk about dealing with
 the responses. The response object has a `json` method that will transform the
-body of the response into a Python dictionary. While this is very useful for
-quick scripts and possibly for very stable APIs, it becomes a more challenging
-approach when dealing with large APIs or APIs that are in development.
+body of the response into a Python dictionary. While treating the response content as a dictionary is good enough for
+quick scripts and possibly for very stable APIs, it scales poorly
+when dealing with large APIs or APIs that are in development.
 
 Accessing the response as a dictionary isn't too difficult when a response body
 has one or two properties, but let's jump back to the first response output we
@@ -328,7 +328,11 @@ or the structure of the API response changes, this means tediously changing the 
 trying to do a string replace across the project, which can have unitended
 consequences unless you're very careful.
 
+Writing Request and Response Models
+===================================
+
 An alternate approach is to deserialize the JSON response to an object. This
+is the approach that most SDKs and language bindings use. This
 greatly simplifies refactoring of response properties and has the added bonus
 of error detection by linters if you use an invalid property name. If you're
 using a code editor which offers autocomplete functionality, you can also
@@ -337,12 +341,196 @@ reference API documentation after you've done the groundwork developing the
 response models. Here's an example of what the response model for our first
 request would look like:
 
-<response model example>
+.. code:: python
 
-This requires a bit of boilerplate code. However, because these objects are
-explicitly defined, static analysis tools will be able to assist us going
-forward. 
+    class Issue(AutoMarshallingModel):
 
-<show the not as good shortcut?>
+        def __init__(self, url, repository_url, labels_url, comments_url, events_url,
+                    html_url, id, number, title, user, labels, state, locked,
+                    assignee, assignees, milestone, comments, created_at,
+                    updated_at, closed_at, body, closed_by):
+            
+            self.url = url
+            self.repository_url = repository_url
+            self.labels_url = labels_url
+            self.comments_url = comments_url
+            self.events_url = events_url
+            self.html_url = html_url
+            self.id = id
+            self.number = number
+            self.title = title
+            self.user = user
+            self.labels = labels
+            self.state = state
+            self.locked = locked
+            self.assignee = assignee
+            self.assignees = assignees
+            self.milestone = milestone
+            self.comments = comments
+            self.created_at = created_at
+            self.updated_at = updated_at
+            self.closed_at = closed_at
+            self.body = body
+            self.closed_by = closed_by
 
-<section on why clients should not make any assumptions on how they will be used>
+        @classmethod
+        def _json_to_obj(cls, serialized_str):
+            resp_dict = json.loads(serialized_str)
+            user = User(**resp_dict.get('user'))
+            
+            assignees = []
+            for assignee in resp_dict.get('assignees'):
+                assignees.append(User(**assignee))
+
+            assignee = User(**resp_dict.get('assignee'))
+
+            labels = []
+            for label in labels:
+                labels.append(Label(**label))
+            
+            return Issue(
+                url=resp_dict.get('url'),
+                repository_url=resp_dict.get('repository_url'),
+                labels_url=resp_dict.get('labels_url'),
+                comments_url=resp_dict.get('comments_url'),
+                events_url=resp_dict.get('events_url'),
+                html_url=resp_dict.get('html_url'),
+                id=resp_dict.get('id'),
+                number=resp_dict.get('number'),
+                title=resp_dict.get('title'),
+                user=user,
+                labels=labels,
+                state=resp_dict.get('state'),
+                locked=resp_dict.get('locked'),
+                assignee=assignee,
+                assignees=assignees,
+                milestone=resp_dict.get('milestone'),
+                comments=resp_dict.get('comments'),
+                created_at=resp_dict.get('created_at'),
+                updated_at=resp_dict.get('updated_at'),
+                closed_at=resp_dict.get('closed_at'),
+                body=resp_dict.get('body'),
+                closed_by=resp_dict.get('closed_by'))
+
+
+    class User(AutoMarshallingModel):
+
+        def __init__(self, login, id, avatar_url, gravatar_id, url, html_url,
+                    followers_url, following_url, gists_url, starred_url,
+                    subscriptions_url, organizations_url, repos_url, events_url,
+                    received_events_url, type, site_admin):
+            
+            self.login = login
+            self.id = id
+            self.avatar_url = avatar_url
+            self.gravatar_id = gravatar_id
+            self.url = url
+            self.html_url = html_url
+            self.followers_url = followers_url
+            self.following_url = following_url
+            self.gists_url = gists_url
+            self.starred_url = starred_url
+            self.subscriptions_url = subscriptions_url
+            self.organizations_url = organizations_url
+            self.repos_url = repos_url
+            self.events_url = events_url
+            self.received_events_url = received_events_url
+            self.type = type
+            self.site_admin = site_admin
+        
+        @classmethod
+        def _json_to_obj(cls, serialized_str):
+            resp_dict = json.loads(serialized_str)
+            return User(**resp_dict)
+
+
+    class Label(AutoMarshallingModel):
+
+        def __init__(self, id, url, name, color, default):
+            
+            self.id = id
+            self.url = url
+            self.name = name
+            self.color = color
+            self.default = default
+        
+        @classmethod
+        def _json_to_obj(cls, serialized_str):
+            resp_dict = json.loads(serialized_str)
+            return Label(**resp_dict)
+
+Any class that inherits from the AutoMarshallingModel class is expected
+to implement the _json_to_obj method, _obj_to_json method, or both. This
+depends on whether the model is being used to handle requests, responses,
+or both.
+
+This example requires quite a bit of boilerplate code. However, because
+these objects are explicitly defined, static analysis tools will be able to
+assist us going forward. We also wanted to use this simple, explict way for
+this demo so it would be easier to understand. In more practical
+implementations, you may want to take advantage of Python's dynamic nature to
+simplify the setting of properties.
+
+
+Writing an Auto-Serializing Client
+==================================
+
+Now that we have response models, we can refactor our client to use them.
+
+.. code:: python
+
+    class GitHubClient(AutoMarshallingHTTPClient):
+
+    def __init__(self, base_url):
+        super(GitHubClient, self).__init__(
+            serialize_format='json', deserialize_format='json')
+        self.base_url = base_url
+        
+    def get_project_issue(self, org_name, project_name, issue_id):
+            
+        url = '{base_url}/repos/{org}/{project}/issues/{issue_id}'.format(
+            base_url=self.base_url, org=organization, project=project,
+            issue_id=issue_id)
+        return self.get(url, response_entity_type=Issue)
+
+There's a few changes to note. The AutoMarshallingHTTPClient class
+subclasses the BaseHTTPClient, so there's no longer a need to create a client.
+We can also specify what type of content we want this client to serialize to
+and from. The response_entity_type parameter defines what type to expect the
+response to be. This together with serialization formats set when the client
+was instantiated determine which serialization methods are called on the
+response contents.
+
+Managing Test Data
+==================
+
+
+
+Writing and Running a Test
+==========================
+
+Now that we have our test client in order, we can write several tests to see
+how OpenCafe handles configuration and logging.
+
+.. code:: python
+
+    class BasicGitHubTest(BaseTestFixture):
+
+        @classmethod
+        def setUpClass(cls):
+            super(BasicGitHubTest, cls).setUpClass() # Sets up logging, stats reporting
+            base_url = 'https://api.github.com'
+            cls.organization = 'cafehub'
+            cls.project = 'opencafe'
+            cls.client = GitHubClient(base_url)
+        
+        def test_get_issue_response_code_is_200(self):
+            response = self.client.get_project_issue(
+                self.organization, self.project, '40')
+            self.assertEqual(response.status_code, 200)
+        
+        def test_id_is_not_null_for_get_issue_request(self):
+            response = self.client.get_project_issue(
+                self.organization, self.project, '40')
+            issue = response.entity
+            self.assertIsNotNull(issue.id)
