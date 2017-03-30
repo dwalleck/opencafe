@@ -325,7 +325,7 @@ the response as-is requires memorizing the response structure or constantly
 referencing API documentation as you code. If you make a mistake, you may not find
 that out until you run the script. Also, if/when the name of one of the properties
 or the structure of the API response changes, this means tediously changing the property each place it is used or
-trying to do a string replace across the project, which can have unitended
+trying to do a string replace across the project, which can have unintended.
 consequences unless you're very careful.
 
 Writing Request and Response Models
@@ -479,19 +479,22 @@ Now that we have response models, we can refactor our client to use them.
 
 .. code:: python
 
+    from cafe.engine.http.client import AutoMarshallingHTTPClient
+
+
     class GitHubClient(AutoMarshallingHTTPClient):
 
-    def __init__(self, base_url):
-        super(GitHubClient, self).__init__(
-            serialize_format='json', deserialize_format='json')
-        self.base_url = base_url
-        
-    def get_project_issue(self, org_name, project_name, issue_id):
+        def __init__(self, base_url):
+            super(GitHubClient, self).__init__(
+                serialize_format='json', deserialize_format='json')
+            self.base_url = base_url
             
-        url = '{base_url}/repos/{org}/{project}/issues/{issue_id}'.format(
-            base_url=self.base_url, org=organization, project=project,
-            issue_id=issue_id)
-        return self.get(url, response_entity_type=Issue)
+        def get_project_issue(self, org_name, project_name, issue_id):
+                
+            url = '{base_url}/repos/{org}/{project}/issues/{issue_id}'.format(
+                base_url=self.base_url, org=organization, project=project,
+                issue_id=issue_id)
+            return self.get(url, response_entity_type=Issue)
 
 There's a few changes to note. The AutoMarshallingHTTPClient class
 subclasses the BaseHTTPClient, so there's no longer a need to create a client.
@@ -504,33 +507,202 @@ response contents.
 Managing Test Data
 ==================
 
+Before we start writing our tests, lets step back and deal with one more
+issue. In the original script, we had statically defined certain data
+such as the GitHub URL, the organization name, and the project name. There
+are many reasons why you should not hardcode these types of values. Of those,
+the most important is that we should not have to make code changes whenever we
+want to use different test data. We should be able to provide the test data we
+want to use at runtime, which makes our tests more portable and dynamic. 
 
+There are many sources we could use for our test data, but for this example we
+will use a plain text file with headers that can be parsed by Python's
+``SafeConfigParser``. For this to work, we will need to create a class that
+represents the data that we want to store in the file.
+
+.. code:: python
+
+    from cafe.engine.models.data_interfaces import ConfigSectionInterface
+
+
+    class GitHubConfig(ConfigSectionInterface):
+
+        SECTION_NAME = 'GitHub'
+
+        @property
+        def base_url(self):
+            return self.get('base_url')
+
+        @property
+        def organization(self):
+            return self.get('organization')
+
+        @property
+        def project(self):
+            return self.get('project')
+
+        @property
+        def issue_id(self):
+            return self.get('issue_id')
+
+Note that there is nothing in this class that explicitly states the
+type of the data source. This is because the OpenCafe ``data_interfaces``
+package provides a uniform interfaces including environment variables and
+JSON data. For the purpose of this guide, we will just use plain text files.
+Our class says we should have one section titled ``GitHub`` with four
+properties. The actual configuration file would look like the following
+example:
+
+.. code:: python
+
+    [GitHub]
+    base_url = https://api.github.com
+    organization = cafehub
+    project = opencafe
+    issue_id = 40
 
 Writing and Running a Test
 ==========================
+
+**From this point in the demo, you can use the** `opencafe-demo`_
+**project to follow along with the guide if you want to execute the steps
+yourself.**
+
+.. _opencafe-demo: https://github.com/dwalleck/opencafe-demo
 
 Now that we have our test client in order, we can write several tests to see
 how OpenCafe handles configuration and logging.
 
 .. code:: python
 
+    from cafe.drivers.unittest.fixtures import BaseTestFixture
+
+    from opencafe_demo.github.github_client import GitHubClient
+    from opencafe_demo.github.github_config import GitHubConfig
+
+
     class BasicGitHubTest(BaseTestFixture):
 
         @classmethod
         def setUpClass(cls):
-            super(BasicGitHubTest, cls).setUpClass() # Sets up logging, stats reporting
-            base_url = 'https://api.github.com'
-            cls.organization = 'cafehub'
-            cls.project = 'opencafe'
-            cls.client = GitHubClient(base_url)
-        
+            super(BasicGitHubTest, cls).setUpClass()  # Sets up logging/reporting
+            cls.config_data = GitHubConfig()
+
+            cls.organization = cls.config_data.organization
+            cls.project = cls.config_data.project
+            cls.issue_id = cls.config_data.issue_id
+            cls.client = GitHubClient(cls.config_data.base_url)
+
         def test_get_issue_response_code_is_200(self):
             response = self.client.get_project_issue(
-                self.organization, self.project, '40')
+                self.organization, self.project, self.issue_id)
             self.assertEqual(response.status_code, 200)
-        
+
         def test_id_is_not_null_for_get_issue_request(self):
             response = self.client.get_project_issue(
-                self.organization, self.project, '40')
+                self.organization, self.project, self.issue_id)
+            # The response signature is the raw response from Requests except
+            # for the `entity` property, which is the object that represents
+            # the response content
             issue = response.entity
-            self.assertIsNotNull(issue.id)
+            self.assertIsNotNone(issue.id)
+
+In this test class, we inherit from OpenCafe's ``BaseTestFixture`` class. This
+base class automatically handles all of the logging setup that we were
+previously doing by hand. It inherits from Python's ``unittest.TestCase``,
+so for all other intents and purposes it behaves the same as any other
+unittest-based test.
+
+Before we can run this test, we need to get our configuration data file in
+place. When we executed the ``cafe-config init`` command at the start of the
+guide, you may have noticed in the output that some directories were created.
+You should now have a ``.opencafe`` directory. This is where all configuration
+data and test logs will be by default (these paths can be changed in the
+``.opencafe/engine.config`` file. See the full documentation for further
+details). We will need to create a directory named ``GitHub`` in which we
+will put our configuration file which we will call ``prod.config``. The names
+used are arbitrary, but they create a convention that will be used when
+we begin running our tests.
+
+For configuration data and logging, OpenCafe uses
+a convention of ``<product-name> <config-file-name>``. For configuration files,
+the ``<config-file-name>`` file will be loaded from the
+``.opencafe/configs/<product-name>`` directory. For logging, logs for each
+test run will be saved in a directory named by the date time stamp of when
+the tests were run in the ``.opencafe/logs/<product-name>/<config-file-name>``
+directory.
+
+For this guide, I'll be using OpenCafe's unittest-based runner to execute the
+tests. All the tests in the ``github`` project can be run by executing
+``cafe-runner github prod.config``.
+
+.. code:: bash
+
+    C:\Users\dwall\.opencafe> cafe-runner github prod.config
+
+        ( (
+        ) )
+    .........
+    |       |___
+    |       |_  |
+    |  :-)  |_| |
+    |       |___|
+    |_______|
+    === CAFE Runner ===
+    ========================================================================================================================
+    Percolated Configuration
+    ------------------------------------------------------------------------------------------------------------------------
+    BREWING FROM: ....: c:\python27\lib\site-packages\opencafe_demo
+    ENGINE CONFIG FILE: C:\Users\dwall\.opencafe\engine.config
+    TEST CONFIG FILE..: C:\Users\dwall\.opencafe\configs\github\prod.config
+    DATA DIRECTORY....: C:\Users\dwall\.opencafe\data
+    LOG PATH..........: C:\Users\dwall\.opencafe\logs\github\prod.config\2017-03-29_23_20_21.391000
+    ========================================================================================================================
+    test_get_issue_response_code_is_200 (opencafe_demo.github.test_issues_api.BasicGitHubTest) ... ok
+    test_id_is_not_null_for_get_issue_request (opencafe_demo.github.test_issues_api.BasicGitHubTest) ... ok
+
+    ----------------------------------------------------------------------
+    Ran 2 tests in 1.246s
+
+    OK
+    ========================================================================================================================
+    Detailed logs: C:\Users\dwall\.opencafe\logs\github\prod.config\2017-03-29_23_20_21.391000
+    ------------------------------------------------------------------------------------------------------------------------
+
+The preamble output from the test runner pretty prints the location of all
+configuration files used for the test run, as well as the the location of the
+logs generated during the test run. Here's what the contents of the log
+directory look like:
+
+.. code:: bash
+
+    C:\Users\dwall\.opencafe\logs\github\prod.config\2017-03-29_23_20_21.391000> ls
+
+    Mode                LastWriteTime         Length Name
+    ----                -------------         ------ ----
+    -a----        3/29/2017  11:20 PM          15606 cafe.master.log
+    -a----        3/29/2017  11:20 PM          15346 opencafe_demo.github.test_issues_api.BasicGitHubTest.log
+
+Two log files were generated by this test run. The second log file is named by
+the full package name of the test class that was run. If there had been
+multiple test classes loaded for execution, there would be one file per class
+run. The benefit of this is to be able to jump directly to the log file that
+you are interested in inspecting. The contents of the logs contain the HTTP
+requests made during test execution, but they also contain headers to mark
+what point the in the lifecycle of the test is being executed:
+
+.. code:: bash
+
+    2017-03-29 23:20:22,009: INFO: root: ========================================================
+    2017-03-29 23:20:22,009: INFO: root: Fixture......: opencafe_demo.github.test_issues_api.BasicGitHubTest
+    2017-03-29 23:20:22,009: INFO: root: Created At...: 2017-03-29 23:20:22.009000
+    2017-03-29 23:20:22,009: INFO: root: ========================================================
+    2017-03-29 23:20:22,016: INFO: root: ========================================================
+    2017-03-29 23:20:22,016: INFO: root: Test Case....: test_get_issue_response_code_is_200
+    2017-03-29 23:20:22,016: INFO: root: Created At...: 2017-03-29 23:20:22.009000
+    2017-03-29 23:20:22,016: INFO: root: No Test description.
+    2017-03-29 23:20:22,016: INFO: root: ========================================================
+
+The other file, ``cafe.master.log`` is a summation of the other log files in
+the order the tests were executed. This allows the user to consume the logs
+however they find easiest.
