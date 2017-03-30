@@ -55,8 +55,9 @@ Contents
 .. toctree::
    :maxdepth: 2
 
-   cafe/index
+   quickstart/index
    installation/index
+   cafe/index
    components/index
    plugins/index
    client_dev/index

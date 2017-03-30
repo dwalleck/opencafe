@@ -1,10 +1,15 @@
 ===========
-Quick Start
+Quickstart
 ===========
 
 **The goal of this portion of the guide is to be a very deliberate step-by-step
 explanation of not only how to use OpenCafe components, but to also explain
-what types of problems are solved by using OpenCafe.**
+what types of problems are solved by using OpenCafe. See the full OpenCafe
+guide for more specific details on the topics discussed here.**
+
+
+Installation
+============
 
 To get started, let's install and initialize OpenCafe. We can do this by
 running the following commands:
@@ -13,6 +18,9 @@ running the following commands:
 
     pip install opencafe
     cafe-config init
+
+Making HTTP Requests
+====================
 
 As an example, lets write a few tests for the GitHub API. Let's assume that we
 don't have language bindings or SDKs for our API. We can create a simple
@@ -141,9 +149,9 @@ should be similar to the following:
         }
     ]
 
-The BaseHTTPClient simply passes the response back as `requests` would, so we
+The BaseHTTPClient simply passes the response back as ``requests`` would, so we
 can treat the response similarly to view its content. At this point, it
-doesn't look like the http plugin is adding any more value than `requests`
+doesn't look like the http plugin is adding any more value than ``requests``
 would. Let's see what we can do about that. First, let's enable logging and
 see what happens.
 
@@ -196,9 +204,12 @@ With logging enabled, lets execute our script again to see the difference.
     -------------------------------------------------------------------------------
 
 That's a little better. We get a verbose log entry for the request made and the
-response we received.  The output from the http client is meant to be human
+response we received.  The output from the HTTP client is meant to be human
 readable and to create an audit trail of what occurred while a test or script
 is executed.
+
+Creating a Basic Application Client
+===================================
 
 Now let's add a few more requests to our script:
 
