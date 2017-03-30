@@ -7,25 +7,20 @@ OpenCafe
 .. image:: https://travis-ci.org/CafeHub/opencafe.svg?branch=master
     :target: https://travis-ci.org/CafeHub/opencafe
 
-
-When writing automated suites, there are some things that should "just work".
-Problems like managing test data, logging, and results are something you
-shouldn't have to re-invent for every test project you work on. OpenCafe aims
-to address that problem by providing solutions for the commonly occurring
-challenges in the development and operation of functional and end-to-end test
-suites.
+When writing automated test sutes, there are some things that should
+"just work". Problems like managing test data, logging, and results are
+things that shouldn't have to be re-invented for every test project you work
+on. OpenCafe aims to address that problem by providing solutions for the
+commonly occuring challenges in the development and operation of functional
+and end-to-end test suites.
 
 Capabilities
 ------------
 
 - Common sense conventions for test data and log management
 - Per test run and per test logs and results
-- Reference drivers for performing non-UI testing
-
-    - HTTP
-    - SSH
-    - WinRM
-
+- Reference drivers for performing non-UI testing including HTTP, SSH,
+  and WinRM
 - Design patterns for building test clients for RESTful API applications
 - Plugin system to allow for further customization
 
