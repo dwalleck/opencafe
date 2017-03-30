@@ -21,9 +21,11 @@ Capabilities
 - Common sense conventions for test data and log management
 - Per test run and per test logs and results
 - Reference drivers for performing non-UI testing
+
     - HTTP
     - SSH
     - WinRM
+
 - Design patterns for building test clients for RESTful API applications
 - Plugin system to allow for further customization
 
@@ -51,7 +53,7 @@ Post-install Configuration
 --------------------------
 
 Post-install, the ``cafe-config`` cli tool will become available. It is used
-for installing plugins and initializing the OpenCafe's default directory
+for installing plugins and initializing OpenCafe's default directory
 structure.
 
 Initialization
